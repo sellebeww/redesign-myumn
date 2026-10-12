@@ -1,0 +1,13 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { validateEnrollment } from '../src/lib/enrollment';
+import type { Course } from '../src/types';
+const course = (extra: Partial<Course> = {}): Course => ({ id: '1', code: 'IF1', name: 'Course one', sks: 3, day: 'Monday', startTime: '08:00', endTime: '10:30', classSection: 'A', lecturerName: 'Lecturer', room: 'C1', attendanceCount: 0, attendanceTotal: 14, ...extra });
+test('rejects an empty cart', () => assert.ok(validateEnrollment([], [])));
+test('rejects duplicate course codes even with different IDs', () => assert.match(validateEnrollment([course()], [course({ id: '2' })])!, /dua kali/));
+test('rejects overlapping schedules', () => assert.match(validateEnrollment([course()], [course({code:'IF2', startTime:'09:00'})])!, /bentrok/));
+test('allows adjacent class times', () => assert.equal(validateEnrollment([course()], [course({code:'IF2',startTime:'10:30',endTime:'12:00'})]), null));
+test('allows the same time on different days', () => assert.equal(validateEnrollment([course()], [course({code:'IF2',day:'Tuesday'})]), null));
+test('rejects more than 24 credits', () => assert.match(validateEnrollment([course({sks:22})], [course({code:'IF2',day:'Tuesday'})])!, /24 SKS/));
+test('allows exactly 24 credits', () => assert.equal(validateEnrollment([course({sks:21})], [course({code:'IF2',day:'Tuesday'})]), null));
+test('reports conflicts in English when requested', () => assert.match(validateEnrollment([course()], [course({code:'IF2', startTime:'09:00'})], 'en')!, /conflict/));
